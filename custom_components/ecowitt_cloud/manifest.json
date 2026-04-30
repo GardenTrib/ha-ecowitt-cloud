@@ -1,0 +1,12 @@
+{
+  "domain": "ecowitt_cloud",
+  "name": "Ecowitt Cloud",
+  "version": "1.0.0",
+  "documentation": "https://github.com/hamzaharouchi/ha-ecowitt-cloud",
+  "issue_tracker": "https://github.com/hamzaharouchi/ha-ecowitt-cloud/issues",
+  "dependencies": [],
+  "codeowners": ["@hamzaharouchi"],
+  "requirements": ["aiohttp>=3.9.0"],
+  "iot_class": "cloud_polling",
+  "config_flow": true
+}
