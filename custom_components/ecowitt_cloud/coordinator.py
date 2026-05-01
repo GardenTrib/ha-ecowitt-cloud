@@ -147,4 +147,18 @@ class EcowittCloudCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
             data = result.get("data", {})
             _LOGGER.debug("%s: data updated (%d callbacks)", self._mac, len(data))
+
+            # Log battery fields to help discover field names
+            batt_fields = {
+                f"{cb}.{field}": val
+                for cb, cb_data in data.items()
+                if isinstance(cb_data, dict)
+                for field, val in cb_data.items()
+                if "batt" in field.lower()
+            }
+            if batt_fields:
+                _LOGGER.debug("%s: battery fields found: %s", self._mac, batt_fields)
+            else:
+                _LOGGER.debug("%s: no battery fields found in response", self._mac)
+
             return data
