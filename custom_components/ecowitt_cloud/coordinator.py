@@ -1,6 +1,7 @@
 """Data coordinator for Ecowitt Cloud integration."""
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import timedelta
 from typing import Any
@@ -23,6 +24,9 @@ from .const import (
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+_RETRY_ATTEMPTS = 3
+_RETRY_BASE_DELAY = 5  # seconds; doubled each attempt (5s, 10s)
 
 
 class EcowittCloudCoordinator(DataUpdateCoordinator[dict[str, Any]]):
@@ -49,7 +53,32 @@ class EcowittCloudCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         )
 
     async def _async_update_data(self) -> dict[str, Any]:
-        """Fetch data from Ecowitt Cloud API."""
+        """Fetch data from Ecowitt Cloud API with retry on transient errors."""
+        last_err: UpdateFailed | None = None
+
+        for attempt in range(_RETRY_ATTEMPTS):
+            try:
+                return await self._fetch()
+            except ConfigEntryAuthFailed:
+                raise
+            except UpdateFailed as err:
+                last_err = err
+                if attempt < _RETRY_ATTEMPTS - 1:
+                    delay = _RETRY_BASE_DELAY * (2 ** attempt)
+                    _LOGGER.warning(
+                        "%s: fetch failed (attempt %d/%d), retrying in %ds: %s",
+                        self._mac,
+                        attempt + 1,
+                        _RETRY_ATTEMPTS,
+                        delay,
+                        err,
+                    )
+                    await asyncio.sleep(delay)
+
+        raise last_err  # type: ignore[misc]
+
+    async def _fetch(self) -> dict[str, Any]:
+        """Perform a single API request and return parsed data."""
         params = {
             "application_key": self._application_key,
             "api_key": self._api_key,
@@ -64,23 +93,28 @@ class EcowittCloudCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 timeout=aiohttp.ClientTimeout(total=API_TIMEOUT),
             ) as response:
                 if response.status == 401:
-                    raise ConfigEntryAuthFailed("Invalid API credentials")
+                    raise ConfigEntryAuthFailed(
+                        f"{self._mac}: invalid API credentials (HTTP 401)"
+                    )
                 if response.status != 200:
-                    raise UpdateFailed(f"API returned HTTP {response.status}")
-
+                    raise UpdateFailed(
+                        f"{self._mac}: API returned HTTP {response.status}"
+                    )
                 result = await response.json()
 
         except aiohttp.ClientError as err:
-            raise UpdateFailed(f"Network error: {err}") from err
+            raise UpdateFailed(f"{self._mac}: network error — {err}") from err
 
         code = result.get("code")
         if code == -1:
-            raise ConfigEntryAuthFailed("Invalid application_key or api_key")
+            raise ConfigEntryAuthFailed(
+                f"{self._mac}: invalid application_key or api_key (code -1)"
+            )
         if code != 0:
             raise UpdateFailed(
-                f"API error code {code}: {result.get('msg', 'Unknown error')}"
+                f"{self._mac}: API error code {code} — {result.get('msg', 'unknown')}"
             )
 
         data = result.get("data", {})
-        _LOGGER.debug("Ecowitt Cloud data received for %s: %s", self._mac, data)
+        _LOGGER.debug("%s: data updated (%d callbacks)", self._mac, len(data))
         return data

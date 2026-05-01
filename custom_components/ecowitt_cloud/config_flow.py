@@ -219,15 +219,11 @@ class EcowittCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         config_entry: config_entries.ConfigEntry,
     ) -> EcowittCloudOptionsFlow:
         """Get options flow."""
-        return EcowittCloudOptionsFlow(config_entry)
+        return EcowittCloudOptionsFlow()
 
 
 class EcowittCloudOptionsFlow(config_entries.OptionsFlow):
     """Handle options for Ecowitt Cloud."""
-
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        """Initialize options flow."""
-        self.config_entry = config_entry
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
