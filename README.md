@@ -34,29 +34,43 @@ Home Assistant custom integration for the **Ecowitt Cloud API v3**. Connects you
 
 ## Entities
 
-### Sensors
-| Entity | Device Class | Unit |
-|--------|-------------|------|
-| Outdoor Temperature | temperature | from account |
-| Outdoor Humidity | humidity | % |
-| Indoor Temperature | temperature | from account |
-| Indoor Humidity | humidity | % |
-| Solar Radiation | irradiance | W/m² |
-| UV Index | — | UV index |
-| Wind Speed | wind_speed | from account |
-| Wind Gust | wind_speed | from account |
-| Wind Direction | — | ° |
-| Pressure | pressure | from account |
-| Rain Rate | precipitation_intensity | from account |
-| Daily Rain | precipitation | from account |
-| Soil Moisture Ch1–Ch16 | moisture | % |
-| Water Flow Ch1–Ch8 | volume_flow_rate | from account |
-| Water Total Ch1–Ch8 | volume | from account |
+> Units are read dynamically from your Ecowitt account settings (metric or imperial).
 
-### Binary Sensors
-| Entity | Device Class | Notes |
-|--------|-------------|-------|
-| Valve Ch1–Ch8 | opening | Open/closed state of WFC01 valves |
+### Weather sensors
+
+| Entity | Unit (metric) | Unit (imperial) |
+|--------|--------------|-----------------|
+| Outdoor Temperature | °C | °F |
+| Outdoor Humidity | % | % |
+| Indoor Temperature | °C | °F |
+| Indoor Humidity | % | % |
+| Solar Radiation | W/m² | W/m² |
+| UV Index | UV index | UV index |
+| Wind Speed | km/h | mph |
+| Wind Gust | km/h | mph |
+| Wind Direction | ° | ° |
+| Pressure | hPa | inHg |
+| Rain Rate | mm/h | in/h |
+| Daily Rain | mm | in |
+
+### Soil sensors (WH51 / WH51L — up to 16 channels)
+
+| Entity | Unit |
+|--------|------|
+| Soil Moisture Ch1 … Ch16 | % |
+
+### Irrigation sensors (WFC01 WittFlow — up to 8 channels)
+
+| Entity | Unit (metric) | Unit (imperial) |
+|--------|--------------|-----------------|
+| Water Flow Ch1 … Ch8 | L/min | gal/min |
+| Water Total Ch1 … Ch8 | L | gal |
+
+### Binary sensors
+
+| Entity | State |
+|--------|-------|
+| Valve Ch1 … Ch8 | On = open / Off = closed |
 
 ---
 
