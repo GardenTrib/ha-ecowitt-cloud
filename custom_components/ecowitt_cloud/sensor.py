@@ -20,9 +20,8 @@ from .const import (
     CONF_MAC,
     DOMAIN,
     SENSOR_DESCRIPTIONS,
-    SOIL_CHANNELS,
-    WATER_CHANNELS,
 )
+
 from .coordinator import EcowittCloudCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -42,7 +41,6 @@ async def async_setup_entry(
     data = coordinator.data or {}
 
     for (callback_key, field_key), description in SENSOR_DESCRIPTIONS.items():
-        # Check if this data is present in the API response
         callback_data = data.get(callback_key, {})
         if callback_data and field_key in callback_data:
             entities.append(
@@ -86,7 +84,6 @@ class EcowittSensor(CoordinatorEntity[EcowittCloudCoordinator], SensorEntity):
         self._attr_unique_id = f"{mac_clean}_{callback_key}_{field_key}"
         self._attr_name = description["name"]
         self._attr_icon = description.get("icon")
-        self._attr_native_unit_of_measurement = description.get("unit")
 
         if description.get("device_class"):
             self._attr_device_class = SensorDeviceClass(description["device_class"])
@@ -106,8 +103,7 @@ class EcowittSensor(CoordinatorEntity[EcowittCloudCoordinator], SensorEntity):
         """Return the state of the sensor."""
         if self.coordinator.data is None:
             return None
-        callback_data = self.coordinator.data.get(self._callback_key, {})
-        field_data = callback_data.get(self._field_key, {})
+        field_data = self._get_field_data()
         value = field_data.get("value")
         if value is None:
             return None
@@ -115,3 +111,15 @@ class EcowittSensor(CoordinatorEntity[EcowittCloudCoordinator], SensorEntity):
             return float(value)
         except (ValueError, TypeError):
             return value
+
+    @property
+    def native_unit_of_measurement(self) -> str | None:
+        """Return the unit from the API response."""
+        if self.coordinator.data is None:
+            return None
+        return self._get_field_data().get("unit")
+
+    def _get_field_data(self) -> dict[str, Any]:
+        """Return the raw field dict from coordinator data."""
+        callback_data = self.coordinator.data.get(self._callback_key, {})
+        return callback_data.get(self._field_key, {})

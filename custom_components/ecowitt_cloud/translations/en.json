@@ -16,13 +16,11 @@
           "selected_macs": "Available Gateways"
         }
       },
-      "mode": {
-        "title": "Data Source Mode",
-        "description": "Choose how Home Assistant retrieves data from your Ecowitt gateway.",
+      "options": {
+        "title": "Polling Options",
+        "description": "Configure how often Home Assistant fetches data from the Ecowitt Cloud.",
         "data": {
-          "mode": "Mode",
-          "port": "Local webhook port (for Local/Auto mode)",
-          "poll_interval": "Cloud polling interval (minutes)"
+          "poll_interval": "Polling interval (minutes)"
         }
       }
     },
@@ -40,9 +38,7 @@
       "init": {
         "title": "Ecowitt Cloud Options",
         "data": {
-          "mode": "Mode",
-          "port": "Local webhook port",
-          "poll_interval": "Cloud polling interval (minutes)"
+          "poll_interval": "Polling interval (minutes)"
         }
       }
     }

@@ -11,20 +11,15 @@ from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import (
+    ALL_CALLBACKS,
     API_DEVICE_REAL_TIME,
     API_TIMEOUT,
-    ALL_CALLBACKS,
     CONF_API_KEY,
     CONF_APPLICATION_KEY,
     CONF_MAC,
     CONF_POLL_INTERVAL,
     DEFAULT_POLL_INTERVAL,
     DOMAIN,
-    PRESSURE_UNIT_HPA,
-    RAINFALL_UNIT_MM,
-    SOLAR_UNIT_WM2,
-    TEMP_UNIT_CELSIUS,
-    WIND_UNIT_KMH,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -60,11 +55,6 @@ class EcowittCloudCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "api_key": self._api_key,
             "mac": self._mac,
             "call_back": ",".join(ALL_CALLBACKS),
-            "temp_unitid": TEMP_UNIT_CELSIUS,
-            "pressure_unitid": PRESSURE_UNIT_HPA,
-            "wind_speed_unitid": WIND_UNIT_KMH,
-            "rainfall_unitid": RAINFALL_UNIT_MM,
-            "solar_irradiance_unitid": SOLAR_UNIT_WM2,
         }
 
         try:
@@ -76,9 +66,7 @@ class EcowittCloudCoordinator(DataUpdateCoordinator[dict[str, Any]]):
                 if response.status == 401:
                     raise ConfigEntryAuthFailed("Invalid API credentials")
                 if response.status != 200:
-                    raise UpdateFailed(
-                        f"API returned HTTP {response.status}"
-                    )
+                    raise UpdateFailed(f"API returned HTTP {response.status}")
 
                 result = await response.json()
 

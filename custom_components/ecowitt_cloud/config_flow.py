@@ -10,12 +10,12 @@ from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
-    SelectSelector,
-    SelectSelectorConfig,
-    SelectSelectorMode,
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
+    SelectSelector,
+    SelectSelectorConfig,
+    SelectSelectorMode,
 )
 
 from .const import (
@@ -25,17 +25,9 @@ from .const import (
     CONF_APPLICATION_KEY,
     CONF_GATEWAY_NAME,
     CONF_MAC,
-    CONF_MODE,
     CONF_POLL_INTERVAL,
-    CONF_PORT,
-    DEFAULT_MODE,
     DEFAULT_POLL_INTERVAL,
-    DEFAULT_PORT,
     DOMAIN,
-    MODE_AUTO,
-    MODE_CLOUD,
-    MODE_LOCAL,
-    MODES,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -129,7 +121,7 @@ class EcowittCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._selected_gateways = [
                     gw for gw in self._gateways if gw["mac"] in selected_macs
                 ]
-                return await self.async_step_mode()
+                return await self.async_step_options()
 
         return self.async_show_form(
             step_id="select_gateways",
@@ -150,25 +142,20 @@ class EcowittCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_mode(
+    async def async_step_options(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.FlowResult:
-        """Step 3: Select data mode and options."""
-        errors: dict[str, str] = {}
-
+        """Step 3: Polling interval."""
         if user_input is not None:
-            mode = user_input[CONF_MODE]
-            port = user_input.get(CONF_PORT, DEFAULT_PORT)
             poll_interval = user_input.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)
 
-            # Create one config entry per selected gateway
-            entries_created = 0
-            for gateway in self._selected_gateways:
-                await self.async_set_unique_id(
-                    f"{DOMAIN}_{gateway['mac'].replace(':', '').replace('-', '')}"
-                )
-                self._abort_if_unique_id_configured()
+            first_gw = self._selected_gateways[0]
+            first_mac_clean = first_gw["mac"].replace(":", "").replace("-", "")
+            await self.async_set_unique_id(f"{DOMAIN}_{first_mac_clean}")
+            self._abort_if_unique_id_configured()
 
+            # Schedule additional gateways via import flow
+            for gw in self._selected_gateways[1:]:
                 self.hass.async_create_task(
                     self.hass.config_entries.flow.async_init(
                         DOMAIN,
@@ -176,18 +163,13 @@ class EcowittCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         data={
                             CONF_APPLICATION_KEY: self._application_key,
                             CONF_API_KEY: self._api_key,
-                            CONF_MAC: gateway["mac"],
-                            CONF_GATEWAY_NAME: gateway.get("name", gateway["mac"]),
-                            CONF_MODE: mode,
-                            CONF_PORT: port,
+                            CONF_MAC: gw["mac"],
+                            CONF_GATEWAY_NAME: gw.get("name", gw["mac"]),
                             CONF_POLL_INTERVAL: poll_interval,
                         },
                     )
-                ) if entries_created > 0 else None
-                entries_created += 1
+                )
 
-            # Create first entry directly
-            first_gw = self._selected_gateways[0]
             return self.async_create_entry(
                 title=first_gw.get("name", first_gw["mac"]),
                 data={
@@ -195,33 +177,14 @@ class EcowittCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_API_KEY: self._api_key,
                     CONF_MAC: first_gw["mac"],
                     CONF_GATEWAY_NAME: first_gw.get("name", first_gw["mac"]),
-                    CONF_MODE: mode,
-                    CONF_PORT: port,
                     CONF_POLL_INTERVAL: poll_interval,
                 },
             )
 
         return self.async_show_form(
-            step_id="mode",
+            step_id="options",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_MODE, default=DEFAULT_MODE): SelectSelector(
-                        SelectSelectorConfig(
-                            options=[
-                                {"value": MODE_CLOUD, "label": "Cloud only (polling)"},
-                                {"value": MODE_LOCAL, "label": "Local only (push from gateway)"},
-                                {"value": MODE_AUTO, "label": "Auto (Local priority + Cloud fallback)"},
-                            ],
-                            mode=SelectSelectorMode.LIST,
-                        )
-                    ),
-                    vol.Optional(CONF_PORT, default=DEFAULT_PORT): NumberSelector(
-                        NumberSelectorConfig(
-                            min=1024,
-                            max=65535,
-                            mode=NumberSelectorMode.BOX,
-                        )
-                    ),
                     vol.Optional(
                         CONF_POLL_INTERVAL, default=DEFAULT_POLL_INTERVAL
                     ): NumberSelector(
@@ -235,7 +198,19 @@ class EcowittCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     ),
                 }
             ),
-            errors=errors,
+        )
+
+    async def async_step_import(
+        self, user_input: dict[str, Any]
+    ) -> config_entries.FlowResult:
+        """Handle programmatic creation of additional gateways."""
+        mac_clean = user_input[CONF_MAC].replace(":", "").replace("-", "")
+        await self.async_set_unique_id(f"{DOMAIN}_{mac_clean}")
+        self._abort_if_unique_id_configured()
+
+        return self.async_create_entry(
+            title=user_input.get(CONF_GATEWAY_NAME, user_input[CONF_MAC]),
+            data=user_input,
         )
 
     @staticmethod
@@ -261,8 +236,6 @@ class EcowittCloudOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
-        current_mode = self.config_entry.data.get(CONF_MODE, DEFAULT_MODE)
-        current_port = self.config_entry.data.get(CONF_PORT, DEFAULT_PORT)
         current_interval = self.config_entry.data.get(
             CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL
         )
@@ -271,23 +244,6 @@ class EcowittCloudOptionsFlow(config_entries.OptionsFlow):
             step_id="init",
             data_schema=vol.Schema(
                 {
-                    vol.Required(CONF_MODE, default=current_mode): SelectSelector(
-                        SelectSelectorConfig(
-                            options=[
-                                {"value": MODE_CLOUD, "label": "Cloud only"},
-                                {"value": MODE_LOCAL, "label": "Local only"},
-                                {"value": MODE_AUTO, "label": "Auto (Local + Cloud fallback)"},
-                            ],
-                            mode=SelectSelectorMode.LIST,
-                        )
-                    ),
-                    vol.Optional(CONF_PORT, default=current_port): NumberSelector(
-                        NumberSelectorConfig(
-                            min=1024,
-                            max=65535,
-                            mode=NumberSelectorMode.BOX,
-                        )
-                    ),
                     vol.Optional(
                         CONF_POLL_INTERVAL, default=current_interval
                     ): NumberSelector(
