@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 from datetime import timedelta
 from typing import Any
 
@@ -43,6 +44,8 @@ class EcowittCloudCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._application_key = config[CONF_APPLICATION_KEY]
         self._api_key = config[CONF_API_KEY]
         self._mac = config[CONF_MAC]
+        # Mutable set — invalid callbacks are removed at runtime
+        self._callbacks: set[str] = set(ALL_CALLBACKS)
         poll_interval = config.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)
 
         super().__init__(
@@ -78,43 +81,70 @@ class EcowittCloudCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         raise last_err  # type: ignore[misc]
 
     async def _fetch(self) -> dict[str, Any]:
-        """Perform a single API request and return parsed data."""
-        params = {
-            "application_key": self._application_key,
-            "api_key": self._api_key,
-            "mac": self._mac,
-            "call_back": ",".join(ALL_CALLBACKS),
-        }
+        """Perform API request, silently removing unsupported callbacks (code 40016)."""
+        while True:
+            if not self._callbacks:
+                _LOGGER.error("%s: no valid callbacks remaining", self._mac)
+                return {}
 
-        try:
-            async with self._session.get(
-                API_DEVICE_REAL_TIME,
-                params=params,
-                timeout=aiohttp.ClientTimeout(total=API_TIMEOUT),
-            ) as response:
-                if response.status == 401:
-                    raise ConfigEntryAuthFailed(
-                        f"{self._mac}: invalid API credentials (HTTP 401)"
+            params = {
+                "application_key": self._application_key,
+                "api_key": self._api_key,
+                "mac": self._mac,
+                "call_back": ",".join(sorted(self._callbacks)),
+            }
+
+            try:
+                async with self._session.get(
+                    API_DEVICE_REAL_TIME,
+                    params=params,
+                    timeout=aiohttp.ClientTimeout(total=API_TIMEOUT),
+                ) as response:
+                    if response.status == 401:
+                        raise ConfigEntryAuthFailed(
+                            f"{self._mac}: invalid API credentials (HTTP 401)"
+                        )
+                    if response.status != 200:
+                        raise UpdateFailed(
+                            f"{self._mac}: API returned HTTP {response.status}"
+                        )
+                    result = await response.json()
+
+            except aiohttp.ClientError as err:
+                raise UpdateFailed(f"{self._mac}: network error — {err}") from err
+
+            code = result.get("code")
+
+            if code == -1:
+                raise ConfigEntryAuthFailed(
+                    f"{self._mac}: invalid application_key or api_key (code -1)"
+                )
+
+            if code == 40016:
+                # A requested callback is not supported by this gateway.
+                # Parse the callback name from the message and remove it.
+                msg = result.get("msg", "")
+                match = re.match(r"^(\S+)\s+is\s+invalid", msg, re.IGNORECASE)
+                invalid_cb = match.group(1) if match else None
+
+                if invalid_cb and invalid_cb in self._callbacks:
+                    self._callbacks.discard(invalid_cb)
+                    _LOGGER.info(
+                        "%s: callback '%s' not supported by this gateway — removed",
+                        self._mac,
+                        invalid_cb,
                     )
-                if response.status != 200:
+                    continue  # retry immediately with reduced callback list
+                else:
                     raise UpdateFailed(
-                        f"{self._mac}: API returned HTTP {response.status}"
+                        f"{self._mac}: API error code 40016 — {msg}"
                     )
-                result = await response.json()
 
-        except aiohttp.ClientError as err:
-            raise UpdateFailed(f"{self._mac}: network error — {err}") from err
+            if code != 0:
+                raise UpdateFailed(
+                    f"{self._mac}: API error code {code} — {result.get('msg', 'unknown')}"
+                )
 
-        code = result.get("code")
-        if code == -1:
-            raise ConfigEntryAuthFailed(
-                f"{self._mac}: invalid application_key or api_key (code -1)"
-            )
-        if code != 0:
-            raise UpdateFailed(
-                f"{self._mac}: API error code {code} — {result.get('msg', 'unknown')}"
-            )
-
-        data = result.get("data", {})
-        _LOGGER.debug("%s: data updated (%d callbacks)", self._mac, len(data))
-        return data
+            data = result.get("data", {})
+            _LOGGER.debug("%s: data updated (%d callbacks)", self._mac, len(data))
+            return data
