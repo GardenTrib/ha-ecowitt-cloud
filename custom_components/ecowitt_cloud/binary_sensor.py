@@ -15,10 +15,10 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
-    BINARY_SENSOR_DESCRIPTIONS,
     CONF_GATEWAY_NAME,
     CONF_MAC,
     DOMAIN,
+    WFC01_BINARY_FIELDS,
 )
 from .coordinator import EcowittCloudCoordinator
 
@@ -38,19 +38,21 @@ async def async_setup_entry(
     entities: list[EcowittBinarySensor] = []
     data = coordinator.data or {}
 
-    for (callback_key, field_key), description in BINARY_SENSOR_DESCRIPTIONS.items():
-        callback_data = data.get(callback_key, {})
-        if callback_data and field_key in callback_data:
-            entities.append(
-                EcowittBinarySensor(
-                    coordinator=coordinator,
-                    mac=mac,
-                    gateway_name=gateway_name,
-                    callback_key=callback_key,
-                    field_key=field_key,
-                    description=description,
-                )
-            )
+    # WFC01 WittFlow valve binary sensors (dynamic callback key = "WFC01-{serial}")
+    for key, cb_data in data.items():
+        if key.startswith("WFC01-") and isinstance(cb_data, dict):
+            for field_key, description in WFC01_BINARY_FIELDS.items():
+                if field_key in cb_data:
+                    entities.append(
+                        EcowittBinarySensor(
+                            coordinator=coordinator,
+                            mac=mac,
+                            gateway_name=gateway_name,
+                            callback_key=key,
+                            field_key=field_key,
+                            description=description,
+                        )
+                    )
 
     _LOGGER.debug(
         "Setting up %d Ecowitt binary sensors for gateway %s",

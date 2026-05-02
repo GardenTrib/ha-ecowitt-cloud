@@ -22,24 +22,8 @@ DEFAULT_POLL_INTERVAL = 5  # minutes
 # At 5 min interval = 288 req/day — safe
 API_MAX_DAILY_REQUESTS = 1500
 
-# Soil channels (up to 16)
-SOIL_CHANNELS = [f"soil_ch{i}" for i in range(1, 17)]
-
-# Water channels (up to 8)
-WATER_CHANNELS = [f"water_ch{i}" for i in range(1, 9)]
-
-# All callbacks for real_time API
-ALL_CALLBACKS = [
-    "outdoor",
-    "indoor",
-    "solar_and_uvi",
-    "rainfall",
-    "wind",
-    "pressure",
-] + SOIL_CHANNELS + WATER_CHANNELS
-
-# Sensor keys mapping: (callback, field) -> sensor metadata
-SENSOR_DESCRIPTIONS = {
+# Sensor descriptions: (callback_key, field_key) -> metadata
+SENSOR_DESCRIPTIONS: dict = {
     # Outdoor
     ("outdoor", "temperature"): {
         "name": "Outdoor Temperature",
@@ -120,7 +104,7 @@ SENSOR_DESCRIPTIONS = {
     },
 }
 
-# Dynamic sensor descriptions for soil channels
+# Soil moisture channels (up to 16)
 for _ch in range(1, 17):
     SENSOR_DESCRIPTIONS[(f"soil_ch{_ch}", "soilmoisture")] = {
         "name": f"Soil Moisture Ch{_ch}",
@@ -129,27 +113,46 @@ for _ch in range(1, 17):
         "icon": "mdi:water-percent",
     }
 
-# Dynamic sensor descriptions for water channels
-for _ch in range(1, 9):
-    SENSOR_DESCRIPTIONS[(f"water_ch{_ch}", "flow_velocity")] = {
-        "name": f"Water Flow Ch{_ch}",
+# Soil sensor battery voltage channels (up to 16)
+for _ch in range(1, 17):
+    SENSOR_DESCRIPTIONS[("battery", f"soilmoisture_sensor_ch{_ch}")] = {
+        "name": f"Soil Battery Ch{_ch}",
+        "device_class": "voltage",
+        "state_class": "measurement",
+        "icon": "mdi:battery",
+    }
+
+# WFC01 WittFlow fields (dynamic callback key = "WFC01-{serial}")
+# Used in sensor.py and binary_sensor.py to create entities for any WFC01-* key found in data
+WFC01_SENSOR_FIELDS: dict = {
+    "flow_rate": {
+        "name": "Flow Rate",
         "device_class": "volume_flow_rate",
         "state_class": "measurement",
         "icon": "mdi:water-pump",
-    }
-    SENSOR_DESCRIPTIONS[(f"water_ch{_ch}", "water_total")] = {
-        "name": f"Water Total Ch{_ch}",
+    },
+    "daily": {
+        "name": "Daily Water",
         "device_class": "volume",
         "state_class": "total_increasing",
         "icon": "mdi:water",
-    }
+    },
+    "monthly": {
+        "name": "Monthly Water",
+        "device_class": "volume",
+        "state_class": "total_increasing",
+        "icon": "mdi:water",
+    },
+}
 
-# Binary sensor descriptions for water channels
-BINARY_SENSOR_DESCRIPTIONS = {}
-for _ch in range(1, 9):
-    BINARY_SENSOR_DESCRIPTIONS[(f"water_ch{_ch}", "water_running")] = {
-        "name": f"Valve Ch{_ch}",
+WFC01_BINARY_FIELDS: dict = {
+    "status": {
+        "name": "Valve",
         "device_class": "opening",
         "icon_on": "mdi:valve-open",
         "icon_off": "mdi:valve-closed",
-    }
+    },
+}
+
+# Keep for binary_sensor.py import compatibility (now empty — WFC01 handled dynamically)
+BINARY_SENSOR_DESCRIPTIONS: dict = {}

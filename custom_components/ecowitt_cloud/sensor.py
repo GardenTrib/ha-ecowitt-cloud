@@ -20,8 +20,8 @@ from .const import (
     CONF_MAC,
     DOMAIN,
     SENSOR_DESCRIPTIONS,
+    WFC01_SENSOR_FIELDS,
 )
-
 from .coordinator import EcowittCloudCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -40,6 +40,7 @@ async def async_setup_entry(
     entities: list[EcowittSensor] = []
     data = coordinator.data or {}
 
+    # Standard sensors from SENSOR_DESCRIPTIONS
     for (callback_key, field_key), description in SENSOR_DESCRIPTIONS.items():
         callback_data = data.get(callback_key, {})
         if callback_data and field_key in callback_data:
@@ -53,6 +54,22 @@ async def async_setup_entry(
                     description=description,
                 )
             )
+
+    # WFC01 WittFlow sensors (dynamic callback key = "WFC01-{serial}")
+    for key, cb_data in data.items():
+        if key.startswith("WFC01-") and isinstance(cb_data, dict):
+            for field_key, description in WFC01_SENSOR_FIELDS.items():
+                if field_key in cb_data:
+                    entities.append(
+                        EcowittSensor(
+                            coordinator=coordinator,
+                            mac=mac,
+                            gateway_name=gateway_name,
+                            callback_key=key,
+                            field_key=field_key,
+                            description=description,
+                        )
+                    )
 
     _LOGGER.debug(
         "Setting up %d Ecowitt sensors for gateway %s", len(entities), mac
@@ -117,7 +134,7 @@ class EcowittSensor(CoordinatorEntity[EcowittCloudCoordinator], SensorEntity):
         """Return the unit from the API response."""
         if self.coordinator.data is None:
             return None
-        return self._get_field_data().get("unit")
+        return self._get_field_data().get("unit") or None
 
     def _get_field_data(self) -> dict[str, Any]:
         """Return the raw field dict from coordinator data."""
