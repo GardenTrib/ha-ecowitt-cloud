@@ -18,8 +18,20 @@ from .const import (
     CONF_APPLICATION_KEY,
     CONF_MAC,
     CONF_POLL_INTERVAL,
+    CONF_TEMP_UNIT,
+    CONF_PRESSURE_UNIT,
+    CONF_WIND_UNIT,
+    CONF_RAIN_UNIT,
     DEFAULT_POLL_INTERVAL,
+    DEFAULT_TEMP_UNIT,
+    DEFAULT_PRESSURE_UNIT,
+    DEFAULT_WIND_UNIT,
+    DEFAULT_RAIN_UNIT,
     DOMAIN,
+    TEMP_UNIT_IDS,
+    PRESSURE_UNIT_IDS,
+    WIND_UNIT_IDS,
+    RAIN_UNIT_IDS,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -43,6 +55,19 @@ class EcowittCloudCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         self._api_key = config[CONF_API_KEY]
         self._mac = config[CONF_MAC]
         poll_interval = config.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)
+
+        self._temp_unitid = TEMP_UNIT_IDS.get(
+            config.get(CONF_TEMP_UNIT, DEFAULT_TEMP_UNIT), 1
+        )
+        self._pressure_unitid = PRESSURE_UNIT_IDS.get(
+            config.get(CONF_PRESSURE_UNIT, DEFAULT_PRESSURE_UNIT), 1
+        )
+        self._wind_unitid = WIND_UNIT_IDS.get(
+            config.get(CONF_WIND_UNIT, DEFAULT_WIND_UNIT), 2
+        )
+        self._rain_unitid = RAIN_UNIT_IDS.get(
+            config.get(CONF_RAIN_UNIT, DEFAULT_RAIN_UNIT), 1
+        )
 
         super().__init__(
             hass,
@@ -83,6 +108,10 @@ class EcowittCloudCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "api_key": self._api_key,
             "mac": self._mac,
             "call_back": "all",
+            "temp_unitid": self._temp_unitid,
+            "pressure_unitid": self._pressure_unitid,
+            "wind_speed_unitid": self._wind_unitid,
+            "rainfall_unitid": self._rain_unitid,
         }
 
         try:

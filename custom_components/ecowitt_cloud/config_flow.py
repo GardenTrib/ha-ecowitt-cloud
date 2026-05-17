@@ -26,11 +26,58 @@ from .const import (
     CONF_GATEWAY_NAME,
     CONF_MAC,
     CONF_POLL_INTERVAL,
+    CONF_TEMP_UNIT,
+    CONF_PRESSURE_UNIT,
+    CONF_WIND_UNIT,
+    CONF_RAIN_UNIT,
     DEFAULT_POLL_INTERVAL,
+    DEFAULT_TEMP_UNIT,
+    DEFAULT_PRESSURE_UNIT,
+    DEFAULT_WIND_UNIT,
+    DEFAULT_RAIN_UNIT,
     DOMAIN,
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+_UNIT_SCHEMA = {
+    vol.Optional(CONF_TEMP_UNIT, default=DEFAULT_TEMP_UNIT): SelectSelector(
+        SelectSelectorConfig(
+            options=[
+                {"value": "celsius", "label": "Celsius (°C)"},
+                {"value": "fahrenheit", "label": "Fahrenheit (°F)"},
+            ],
+            mode=SelectSelectorMode.LIST,
+        )
+    ),
+    vol.Optional(CONF_PRESSURE_UNIT, default=DEFAULT_PRESSURE_UNIT): SelectSelector(
+        SelectSelectorConfig(
+            options=[
+                {"value": "hpa", "label": "hPa"},
+                {"value": "inhg", "label": "inHg"},
+            ],
+            mode=SelectSelectorMode.LIST,
+        )
+    ),
+    vol.Optional(CONF_WIND_UNIT, default=DEFAULT_WIND_UNIT): SelectSelector(
+        SelectSelectorConfig(
+            options=[
+                {"value": "kmh", "label": "km/h"},
+                {"value": "mph", "label": "mph"},
+            ],
+            mode=SelectSelectorMode.LIST,
+        )
+    ),
+    vol.Optional(CONF_RAIN_UNIT, default=DEFAULT_RAIN_UNIT): SelectSelector(
+        SelectSelectorConfig(
+            options=[
+                {"value": "mm", "label": "mm"},
+                {"value": "in", "label": "in"},
+            ],
+            mode=SelectSelectorMode.LIST,
+        )
+    ),
+}
 
 
 async def _fetch_device_list(
@@ -145,7 +192,7 @@ class EcowittCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_options(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.FlowResult:
-        """Step 3: Polling interval."""
+        """Step 3: Polling interval and units."""
         if user_input is not None:
             poll_interval = user_input.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL)
 
@@ -154,7 +201,6 @@ class EcowittCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             await self.async_set_unique_id(f"{DOMAIN}_{first_mac_clean}")
             self._abort_if_unique_id_configured()
 
-            # Schedule additional gateways via import flow
             for gw in self._selected_gateways[1:]:
                 self.hass.async_create_task(
                     self.hass.config_entries.flow.async_init(
@@ -166,6 +212,10 @@ class EcowittCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             CONF_MAC: gw["mac"],
                             CONF_GATEWAY_NAME: gw.get("name", gw["mac"]),
                             CONF_POLL_INTERVAL: poll_interval,
+                            CONF_TEMP_UNIT: user_input.get(CONF_TEMP_UNIT, DEFAULT_TEMP_UNIT),
+                            CONF_PRESSURE_UNIT: user_input.get(CONF_PRESSURE_UNIT, DEFAULT_PRESSURE_UNIT),
+                            CONF_WIND_UNIT: user_input.get(CONF_WIND_UNIT, DEFAULT_WIND_UNIT),
+                            CONF_RAIN_UNIT: user_input.get(CONF_RAIN_UNIT, DEFAULT_RAIN_UNIT),
                         },
                     )
                 )
@@ -178,6 +228,10 @@ class EcowittCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     CONF_MAC: first_gw["mac"],
                     CONF_GATEWAY_NAME: first_gw.get("name", first_gw["mac"]),
                     CONF_POLL_INTERVAL: poll_interval,
+                    CONF_TEMP_UNIT: user_input.get(CONF_TEMP_UNIT, DEFAULT_TEMP_UNIT),
+                    CONF_PRESSURE_UNIT: user_input.get(CONF_PRESSURE_UNIT, DEFAULT_PRESSURE_UNIT),
+                    CONF_WIND_UNIT: user_input.get(CONF_WIND_UNIT, DEFAULT_WIND_UNIT),
+                    CONF_RAIN_UNIT: user_input.get(CONF_RAIN_UNIT, DEFAULT_RAIN_UNIT),
                 },
             )
 
@@ -196,6 +250,7 @@ class EcowittCloudConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                             mode=NumberSelectorMode.SLIDER,
                         )
                     ),
+                    **_UNIT_SCHEMA,
                 }
             ),
         )
@@ -232,16 +287,15 @@ class EcowittCloudOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
-        current_interval = self.config_entry.data.get(
-            CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL
-        )
+        data = {**self.config_entry.data, **self.config_entry.options}
 
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(
                 {
                     vol.Optional(
-                        CONF_POLL_INTERVAL, default=current_interval
+                        CONF_POLL_INTERVAL,
+                        default=data.get(CONF_POLL_INTERVAL, DEFAULT_POLL_INTERVAL),
                     ): NumberSelector(
                         NumberSelectorConfig(
                             min=5,
@@ -249,6 +303,54 @@ class EcowittCloudOptionsFlow(config_entries.OptionsFlow):
                             step=5,
                             unit_of_measurement="min",
                             mode=NumberSelectorMode.SLIDER,
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_TEMP_UNIT,
+                        default=data.get(CONF_TEMP_UNIT, DEFAULT_TEMP_UNIT),
+                    ): SelectSelector(
+                        SelectSelectorConfig(
+                            options=[
+                                {"value": "celsius", "label": "Celsius (°C)"},
+                                {"value": "fahrenheit", "label": "Fahrenheit (°F)"},
+                            ],
+                            mode=SelectSelectorMode.LIST,
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_PRESSURE_UNIT,
+                        default=data.get(CONF_PRESSURE_UNIT, DEFAULT_PRESSURE_UNIT),
+                    ): SelectSelector(
+                        SelectSelectorConfig(
+                            options=[
+                                {"value": "hpa", "label": "hPa"},
+                                {"value": "inhg", "label": "inHg"},
+                            ],
+                            mode=SelectSelectorMode.LIST,
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_WIND_UNIT,
+                        default=data.get(CONF_WIND_UNIT, DEFAULT_WIND_UNIT),
+                    ): SelectSelector(
+                        SelectSelectorConfig(
+                            options=[
+                                {"value": "kmh", "label": "km/h"},
+                                {"value": "mph", "label": "mph"},
+                            ],
+                            mode=SelectSelectorMode.LIST,
+                        )
+                    ),
+                    vol.Optional(
+                        CONF_RAIN_UNIT,
+                        default=data.get(CONF_RAIN_UNIT, DEFAULT_RAIN_UNIT),
+                    ): SelectSelector(
+                        SelectSelectorConfig(
+                            options=[
+                                {"value": "mm", "label": "mm"},
+                                {"value": "in", "label": "in"},
+                            ],
+                            mode=SelectSelectorMode.LIST,
                         )
                     ),
                 }

@@ -122,6 +122,23 @@ for _ch in range(1, 17):
         "icon": "mdi:battery",
     }
 
+# Unit preferences
+CONF_TEMP_UNIT = "temp_unit"
+CONF_PRESSURE_UNIT = "pressure_unit"
+CONF_WIND_UNIT = "wind_unit"
+CONF_RAIN_UNIT = "rain_unit"
+
+DEFAULT_TEMP_UNIT = "celsius"
+DEFAULT_PRESSURE_UNIT = "hpa"
+DEFAULT_WIND_UNIT = "kmh"
+DEFAULT_RAIN_UNIT = "mm"
+
+# Ecowitt API unit IDs
+TEMP_UNIT_IDS = {"celsius": 1, "fahrenheit": 2}
+PRESSURE_UNIT_IDS = {"hpa": 1, "inhg": 2}
+WIND_UNIT_IDS = {"kmh": 2, "mph": 3}
+RAIN_UNIT_IDS = {"mm": 1, "in": 2}
+
 # WFC01 WittFlow fields (dynamic callback key = "WFC01-{serial}")
 # Used in sensor.py and binary_sensor.py to create entities for any WFC01-* key found in data
 WFC01_SENSOR_FIELDS: dict = {

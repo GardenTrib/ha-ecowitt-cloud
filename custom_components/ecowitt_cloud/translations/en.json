@@ -17,10 +17,14 @@
         }
       },
       "options": {
-        "title": "Polling Options",
-        "description": "Configure how often Home Assistant fetches data from the Ecowitt Cloud.",
+        "title": "Polling & Units",
+        "description": "Configure polling interval and preferred units.",
         "data": {
-          "poll_interval": "Polling interval (minutes)"
+          "poll_interval": "Polling interval (minutes)",
+          "temp_unit": "Temperature unit",
+          "pressure_unit": "Pressure unit",
+          "wind_unit": "Wind speed unit",
+          "rain_unit": "Rainfall unit"
         }
       }
     },
@@ -38,7 +42,11 @@
       "init": {
         "title": "Ecowitt Cloud Options",
         "data": {
-          "poll_interval": "Polling interval (minutes)"
+          "poll_interval": "Polling interval (minutes)",
+          "temp_unit": "Temperature unit",
+          "pressure_unit": "Pressure unit",
+          "wind_unit": "Wind speed unit",
+          "rain_unit": "Rainfall unit"
         }
       }
     }
