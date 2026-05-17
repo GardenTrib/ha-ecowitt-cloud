@@ -1,6 +1,5 @@
 # Ecowitt Cloud — Home Assistant Integration
 
-[![HACS Badge](https://img.shields.io/badge/HACS-Default-blue.svg)](https://github.com/hacs/default)
 [![GitHub Release](https://img.shields.io/github/release/GardenTrib/ha-ecowitt-cloud.svg)](https://github.com/GardenTrib/ha-ecowitt-cloud/releases)
 [![License](https://img.shields.io/github/license/GardenTrib/ha-ecowitt-cloud.svg)](LICENSE)
 [![HA Version](https://img.shields.io/badge/Home%20Assistant-2024.1%2B-blue.svg)](https://www.home-assistant.io/)
@@ -16,7 +15,8 @@ Home Assistant custom integration for the **Ecowitt Cloud API v3**. Connects you
 - **Dynamic units** — uses the units configured in your Ecowitt account, no manual conversion
 - **Dynamic channels** — only creates entities for sensors actually present in the API response
 - **Soil moisture** — up to 16 channels (WH51, WH51L)
-- **Irrigation valves** — flow rate, total volume, open/closed status — up to 8 channels (WFC01 WittFlow)
+- **Soil battery voltage** — battery level in Volts for each active soil sensor
+- **Irrigation valves** — flow rate, daily/monthly volume, open/closed status (WFC01 WittFlow)
 - **Retry with backoff** — automatic retry on transient network errors (3 attempts, 5s/10s delays)
 
 ---
@@ -27,7 +27,7 @@ Home Assistant custom integration for the **Ecowitt Cloud API v3**. Connects you
 |--------|------|
 | GW3000 (and GW series) | Gateway |
 | WH51 / WH51L | Soil moisture sensor (up to 16) |
-| WFC01 WittFlow ½" | Irrigation valve (up to 8) |
+| WFC01 WittFlow ½" | Irrigation valve |
 | WH65, WH80, WH90 and compatible | Outdoor weather sensors |
 
 ---
@@ -35,6 +35,7 @@ Home Assistant custom integration for the **Ecowitt Cloud API v3**. Connects you
 ## Entities
 
 > Units are read dynamically from your Ecowitt account settings (metric or imperial).
+> Only entities with data actually present in the API response are created.
 
 ### Weather sensors
 
@@ -58,37 +59,39 @@ Home Assistant custom integration for the **Ecowitt Cloud API v3**. Connects you
 | Entity | Unit |
 |--------|------|
 | Soil Moisture Ch1 … Ch16 | % |
+| Soil Battery Ch1 … Ch16 | V |
 
-### Irrigation sensors (WFC01 WittFlow — up to 8 channels)
+### Irrigation sensors (WFC01 WittFlow)
 
 | Entity | Unit (metric) | Unit (imperial) |
 |--------|--------------|-----------------|
-| Water Flow Ch1 … Ch8 | L/min | gal/min |
-| Water Total Ch1 … Ch8 | L | gal |
+| Flow Rate | L/min | gal/min |
+| Daily Water | L | gal |
+| Monthly Water | L | gal |
 
 ### Binary sensors
 
 | Entity | State |
 |--------|-------|
-| Valve Ch1 … Ch8 | On = open / Off = closed |
+| Valve | On = open / Off = closed |
 
 ---
 
 ## Installation
 
-### Via HACS (recommended)
+### Via HACS (custom repository)
 
 1. In Home Assistant, open **HACS → Integrations**
-2. Search for **Ecowitt Cloud** and install
-3. Restart Home Assistant
-
-> If HACS doesn't find it yet, add it as a custom repository:
-> HACS → ⋮ → Custom repositories → `https://github.com/GardenTrib/ha-ecowitt-cloud` → Integration
+2. Click **⋮ → Custom repositories**
+3. Add `https://github.com/GardenTrib/ha-ecowitt-cloud` → category **Integration**
+4. Search for **Ecowitt Cloud** and install
+5. Restart Home Assistant
 
 ### Manual
 
-1. Copy `custom_components/ecowitt_cloud/` to your HA `config/custom_components/` folder
-2. Restart Home Assistant
+1. Download or clone this repository
+2. Copy the `custom_components/ecowitt_cloud/` folder to your HA `config/custom_components/` directory
+3. Restart Home Assistant
 
 ---
 
