@@ -1,0 +1,54 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Ecowitt Cloud — API Credentials",
+        "description": "Enter your Ecowitt API credentials. Get them at https://api.ecowitt.net",
+        "data": {
+          "application_key": "Application Key",
+          "api_key": "API Key"
+        }
+      },
+      "select_gateways": {
+        "title": "Select Gateways",
+        "description": "Select one or more gateways to add to Home Assistant.",
+        "data": {
+          "selected_macs": "Available Gateways"
+        }
+      },
+      "options": {
+        "title": "Polling & Units",
+        "description": "Configure polling interval and preferred units.",
+        "data": {
+          "poll_interval": "Polling interval (minutes)",
+          "temp_unit": "Temperature unit",
+          "pressure_unit": "Pressure unit",
+          "wind_unit": "Wind speed unit",
+          "rain_unit": "Rainfall unit"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Cannot connect to Ecowitt API. Check your credentials.",
+      "invalid_auth": "Invalid API credentials.",
+      "no_gateway_selected": "Please select at least one gateway."
+    },
+    "abort": {
+      "already_configured": "This gateway is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Ecowitt Cloud Options",
+        "data": {
+          "poll_interval": "Polling interval (minutes)",
+          "temp_unit": "Temperature unit",
+          "pressure_unit": "Pressure unit",
+          "wind_unit": "Wind speed unit",
+          "rain_unit": "Rainfall unit"
+        }
+      }
+    }
+  }
+}
